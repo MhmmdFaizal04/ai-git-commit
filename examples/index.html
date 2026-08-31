@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ai-git-commit — AI Commit Message Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #111118; --surface2: #18181f;
+      --border: #1f1f2e; --border2: #2a2a3d;
+      --accent: #6c63ff; --pink: #f472b6; --cyan: #22d3ee; --green: #4ade80;
+      --text: #e2e2f0; --text2: #9090b0; --text3: #404060; --r: 10px;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+    /* NAV */
+    header {
+      position: fixed; inset: 0 0 auto 0; z-index: 100; height: 52px;
+      display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
+      background: rgba(10,10,15,.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border);
+    }
+    .logo { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+    .logo-mark { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, var(--accent), var(--pink)); }
+    .logo-name { font-size: 13px; font-weight: 600; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+    .header-right { display: flex; gap: 8px; }
+    .btn-gh {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500;
+      color: var(--text2); text-decoration: none; padding: 6px 14px;
+      border: 1px solid var(--border2); border-radius: 7px; background: var(--surface2);
+      transition: border-color .15s, color .15s;
+    }
+    .btn-gh:hover { border-color: var(--accent); color: var(--text); }
+    .btn-gh svg { width: 14px; height: 14px; fill: var(--text3); }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh; display: grid;
+      grid-template-columns: 1fr 1fr; gap: 48px;
+      align-items: center; padding: 100px 60px 60px;
+      max-width: 1200px; margin: 0 auto;
+    }
+    .hero-left {}
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 18px;
+    }
+    .eyebrow::before, .eyebrow::after { content:''; display:block; width:16px; height:1px; background:var(--accent); opacity:.4; }
+    .hero h1 { font-size: clamp(32px, 4vw, 54px); font-weight: 700; letter-spacing: -1.5px; line-height: 1.08; margin-bottom: 16px; }
+    .hero h1 em { font-style: normal; background: linear-gradient(120deg, var(--accent), var(--pink)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .hero p { font-size: 15px; color: var(--text2); line-height: 1.7; margin-bottom: 28px; max-width: 440px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 32px; }
+    .btn-primary { font-size: 13px; font-weight: 500; color:#fff; padding: 10px 22px; background: var(--accent); border-radius: 8px; border:none; cursor:pointer; text-decoration:none; transition: opacity .15s, transform .15s; }
+    .btn-primary:hover { opacity:.85; transform:translateY(-1px); }
+    .btn-outline { font-size: 13px; font-weight: 500; color: var(--text2); padding: 10px 22px; border: 1px solid var(--border2); border-radius: 8px; background:none; cursor:pointer; text-decoration:none; transition: border-color .15s, color .15s; }
+    .btn-outline:hover { border-color:var(--text3); color:var(--text); }
+
+    .install-box { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; width: fit-content; }
+    .install-box code { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--cyan); padding: 10px 16px; }
+    .install-box button { font-size: 11px; font-weight: 500; color: var(--text2); padding: 10px 14px; border:none; border-left: 1px solid var(--border); background: var(--surface2); cursor:pointer; transition: color .15s; }
+    .install-box button:hover { color: var(--text); }
+
+    /* Terminal mockup */
+    .terminal {
+      background: #0d0d1a; border: 1px solid var(--border2); border-radius: 14px;
+      overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,.5);
+    }
+    .terminal-bar { background: #18181f; padding: 12px 16px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); }
+    .terminal-bar span { width: 10px; height: 10px; border-radius: 50%; }
+    .t-red { background: #ff5f56; } .t-yellow { background: #febc2e; } .t-green { background: #28c840; }
+    .terminal-title { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; margin: 0 auto; }
+    .terminal-body { padding: 20px 20px 24px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.8; }
+    .t-prompt { color: var(--text3); } .t-cmd { color: var(--text); }
+    .t-dim { color: var(--text3); } .t-muted { color: var(--text2); }
+    .t-purple { color: var(--accent); font-weight: 600; }
+    .t-pink { color: var(--pink); } .t-green-t { color: var(--green); }
+    .t-white { color: var(--text); }
+    .t-cursor { display: inline-block; width: 7px; height: 13px; background: var(--accent); border-radius: 1px; animation: blink 1s step-end infinite; vertical-align: middle; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* HOW IT WORKS */
+    .section { max-width: 1100px; margin: 0 auto; padding: 80px 32px; }
+    hr { border: none; border-top: 1px solid var(--border); }
+    .sh { margin-bottom: 40px; }
+    .sh-tag { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+    .sh h2 { font-size: 28px; font-weight: 700; letter-spacing: -.6px; margin-bottom: 6px; }
+    .sh p { font-size: 14px; color: var(--text2); }
+
+    /* STEPS */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--border); border-radius: var(--r); overflow: hidden; }
+    .step { background: var(--surface); padding: 28px 24px; }
+    .step-num { font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--accent); margin-bottom: 12px; letter-spacing: .05em; }
+    .step-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .step-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+    /* PROVIDERS */
+    .providers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .prov-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; }
+    .prov-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .prov-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .prov-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .prov-badge { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 100px; margin-left: auto; }
+    .badge-free { background: rgba(74,222,128,.12); color: var(--green); }
+    .badge-api { background: rgba(108,99,255,.12); color: var(--accent); }
+    .prov-models { display: flex; flex-direction: column; gap: 4px; }
+    .prov-model { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--text3); padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .prov-model:last-child { border-bottom: none; }
+    .prov-model span { float: right; font-size: 10px; color: var(--text3); font-family: 'Inter', sans-serif; }
+
+    /* COMMIT TYPES */
+    .types-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+    .type-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .type-name { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
+    .type-desc { font-size: 11px; color: var(--text3); }
+
+    /* CODE */
+    .code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+    .code-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    .code-top { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+    .code-dots { display: flex; gap: 5px; }
+    .code-dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .code-dots span:nth-child(1) { background:#ff5f56; }
+    .code-dots span:nth-child(2) { background:#febc2e; }
+    .code-dots span:nth-child(3) { background:#28c840; }
+    .code-file { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text3); }
+    .code-copy { font-size: 11px; font-weight: 500; font-family: 'Inter', sans-serif; color: var(--text2); padding: 4px 10px; border: 1px solid var(--border2); border-radius: 5px; background: none; cursor: pointer; transition: all .15s; }
+    .code-copy:hover { color: var(--text); border-color: var(--text3); }
+    pre { padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.75; overflow-x: auto; color: #abb2bf; }
+    .kw{color:#c678dd} .cm{color:#4a4a6a;font-style:italic} .val{color:#98c379} .prop{color:#61afef}
+
+    footer { border-top: 1px solid var(--border); padding: 36px 24px; text-align: center; }
+    .f-logo { font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text); margin-bottom: 8px; }
+    footer p { font-size: 13px; color: var(--text3); margin-bottom: 16px; }
+    footer p a { color: var(--accent); text-decoration: none; }
+    .f-links { display: flex; justify-content: center; gap: 20px; }
+    .f-links a { font-size: 12px; color: var(--text3); text-decoration: none; transition: color .15s; }
+    .f-links a:hover { color: var(--text2); }
+
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; padding: 90px 24px 48px; }
+      .terminal { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="#" class="logo">
+    <div class="logo-mark"></div>
+    <span class="logo-name">ai-git-commit</span>
+  </a>
+  <div class="header-right">
+    <a href="https://github.com/MhmmdFaizal04/ai-git-commit" class="btn-gh" target="_blank">
+      <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      Star on GitHub
+    </a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="eyebrow">AI Developer Tool</div>
+    <h1>Commit messages,<br><em>written by AI.</em></h1>
+    <p>Stop writing commit messages manually. Stage your changes, run <code style="font-family:monospace;color:var(--cyan)">aic</code>, and get a perfect conventional commit in seconds — powered by OpenAI, Anthropic, or a local LLM.</p>
+    <div class="hero-actions">
+      <a href="#install" class="btn-primary">Get Started</a>
+      <a href="https://github.com/MhmmdFaizal04/ai-git-commit" class="btn-outline" target="_blank">View on GitHub</a>
+    </div>
+    <div class="install-box">
+      <code>npm install -g ai-git-commit</code>
+      <button onclick="copyCmd(this,'npm install -g ai-git-commit')">Copy</button>
+    </div>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <span class="t-red"></span>
+      <span class="t-yellow"></span>
+      <span class="t-green"></span>
+      <div class="terminal-title">ai-git-commit</div>
+    </div>
+    <div class="terminal-body">
+      <div><span class="t-prompt">$ </span><span class="t-cmd">git add .</span></div>
+      <div><span class="t-prompt">$ </span><span class="t-cmd">aic</span><span class="t-cursor"></span></div>
+      <div>&nbsp;</div>
+      <div><span class="t-purple">  ai-git-commit</span><span class="t-dim"> v1.0.0</span></div>
+      <div>&nbsp;</div>
+      <div><span class="t-muted">  3 staged files:</span></div>
+      <div><span class="t-dim">  · M  src/auth/login.ts</span></div>
+      <div><span class="t-dim">  · A  src/auth/oauth.ts</span></div>
+      <div><span class="t-dim">  · M  tests/auth.test.ts</span></div>
+      <div>&nbsp;</div>
+      <div class="generating">
+        <span class="t-purple">  ⠸</span><span class="t-muted"> Generating via openai...</span>
+      </div>
+      <div>&nbsp;</div>
+      <div><span class="t-green-t">  ✓</span><span class="t-muted"> Commit message generated</span></div>
+      <div>&nbsp;</div>
+      <div>
+        <span class="t-purple" style="font-weight:600">  feat</span><span class="t-muted">(</span><span class="t-pink">auth</span><span class="t-muted">):</span>
+        <span class="t-white"> add OAuth2 login with Google</span>
+      </div>
+      <div>&nbsp;</div>
+      <div><span class="t-muted">  ? What would you like to do?</span></div>
+      <div><span class="t-purple">  ❯ Commit</span><span class="t-dim">  Edit  Regenerate  Cancel</span></div>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- How it works -->
+<section class="section" id="how">
+  <div class="sh">
+    <div class="sh-tag">How it works</div>
+    <h2>Three steps</h2>
+    <p>From staged changes to committed code in seconds</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-title">Stage your changes</div>
+      <div class="step-desc">Run <code style="font-family:monospace;color:var(--cyan)">git add .</code> as usual. ai-git-commit reads the staged diff automatically.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-title">Run aic</div>
+      <div class="step-desc">The CLI reads your diff, sends it to your chosen AI provider, and generates a conventional commit message.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-title">Confirm or edit</div>
+      <div class="step-desc">Review the message, edit if needed, or regenerate. Press Enter to commit. Done.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-title">Committed</div>
+      <div class="step-desc">The commit is made with the AI-generated message. Your git history stays clean and consistent.</div>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- Providers -->
+<section class="section" id="providers">
+  <div class="sh">
+    <div class="sh-tag">Providers</div>
+    <h2>Works with any LLM</h2>
+    <p>Choose between cloud APIs or run 100% locally for free</p>
+  </div>
+  <div class="providers-grid">
+    <div class="prov-card">
+      <div class="prov-header">
+        <div class="prov-icon" style="background:rgba(108,99,255,.15)">🤖</div>
+        <div class="prov-name">OpenAI</div>
+        <span class="prov-badge badge-api">API key</span>
+      </div>
+      <div class="prov-models">
+        <div class="prov-model">gpt-4o-mini <span>Recommended</span></div>
+        <div class="prov-model">gpt-4o <span>Best quality</span></div>
+        <div class="prov-model">gpt-3.5-turbo <span>Cheapest</span></div>
+      </div>
+    </div>
+    <div class="prov-card">
+      <div class="prov-header">
+        <div class="prov-icon" style="background:rgba(244,114,182,.12)">🧠</div>
+        <div class="prov-name">Anthropic</div>
+        <span class="prov-badge badge-api">API key</span>
+      </div>
+      <div class="prov-models">
+        <div class="prov-model">claude-3-5-sonnet <span>Best quality</span></div>
+        <div class="prov-model">claude-3-haiku <span>Fast & cheap</span></div>
+      </div>
+    </div>
+    <div class="prov-card">
+      <div class="prov-header">
+        <div class="prov-icon" style="background:rgba(74,222,128,.1)">💻</div>
+        <div class="prov-name">Ollama</div>
+        <span class="prov-badge badge-free">100% Free</span>
+      </div>
+      <div class="prov-models">
+        <div class="prov-model">llama3.2 <span>Recommended</span></div>
+        <div class="prov-model">deepseek-coder-v2 <span>Best for code</span></div>
+        <div class="prov-model">qwen2.5-coder <span>Strong coder</span></div>
+        <div class="prov-model">mistral <span>Fast</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- Install & usage -->
+<section class="section" id="install">
+  <div class="sh">
+    <div class="sh-tag">Get Started</div>
+    <h2>Install & configure</h2>
+    <p>Up and running in 60 seconds</p>
+  </div>
+  <div class="code-grid">
+    <div class="code-block">
+      <div class="code-top">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-file">Install</span>
+        <button class="code-copy" onclick="copyCmd(this,'npm install -g ai-git-commit')">Copy</button>
+      </div>
+      <pre><code><span class="cm"># Install globally</span>
+npm install -g ai-git-commit
+
+<span class="cm"># Or use without installing</span>
+npx ai-git-commit</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-top">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-file">Setup</span>
+        <button class="code-copy" onclick="copyCmd(this,'aic setup')">Copy</button>
+      </div>
+      <pre><code><span class="cm"># Interactive setup wizard</span>
+aic setup
+
+<span class="cm"># Or set env variable</span>
+<span class="kw">export</span> OPENAI_API_KEY=sk-...
+
+<span class="cm"># Then generate a commit</span>
+git add .
+aic</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-top">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-file">Usage</span>
+        <button class="code-copy" onclick="copyCmd(this,'aic')">Copy</button>
+      </div>
+      <pre><code><span class="cm"># Generate + confirm + commit</span>
+aic
+
+<span class="cm"># Preview only — no commit</span>
+aic --dry-run
+
+<span class="cm"># Auto-commit no prompt</span>
+aic --yes
+
+<span class="cm"># Use specific provider</span>
+aic --provider ollama
+aic --provider anthropic
+
+<span class="cm"># View config</span>
+aic config</code></pre>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- Commit types -->
+<section class="section" id="types">
+  <div class="sh">
+    <div class="sh-tag">Conventional Commits</div>
+    <h2>Supported commit types</h2>
+    <p>AI picks the right type based on your diff</p>
+  </div>
+  <div class="types-grid" id="typesGrid"></div>
+</section>
+
+<footer>
+  <div class="f-logo">ai-git-commit</div>
+  <p>Made by <a href="https://github.com/MhmmdFaizal04" target="_blank">MhmmdFaizal04</a> &mdash; MIT License</p>
+  <div class="f-links">
+    <a href="https://github.com/MhmmdFaizal04/ai-git-commit" target="_blank">GitHub</a>
+    <a href="https://github.com/MhmmdFaizal04/ai-git-commit/issues" target="_blank">Issues</a>
+    <a href="https://github.com/MhmmdFaizal04/ai-git-commit/blob/main/README.md" target="_blank">Docs</a>
+  </div>
+</footer>
+
+<script>
+  const TYPES = [
+    { name: 'feat', color: '#6c63ff', desc: 'New feature or enhancement' },
+    { name: 'fix', color: '#f87171', desc: 'Bug fix' },
+    { name: 'docs', color: '#60a5fa', desc: 'Documentation changes' },
+    { name: 'style', color: '#f472b6', desc: 'Formatting, no logic change' },
+    { name: 'refactor', color: '#fb923c', desc: 'Code restructure, no fix/feat' },
+    { name: 'test', color: '#4ade80', desc: 'Add or update tests' },
+    { name: 'chore', color: '#9ca3af', desc: 'Maintenance, config, deps' },
+    { name: 'perf', color: '#facc15', desc: 'Performance improvement' },
+    { name: 'ci', color: '#818cf8', desc: 'CI/CD configuration' },
+    { name: 'build', color: '#a78bfa', desc: 'Build system changes' },
+    { name: 'revert', color: '#f43f5e', desc: 'Revert a previous commit' },
+  ]
+
+  document.getElementById('typesGrid').innerHTML = TYPES.map(t => `
+    <div class="type-card">
+      <div class="type-name" style="color:${t.color}">${t.name}</div>
+      <div class="type-desc">${t.desc}</div>
+    </div>
+  `).join('')
+
+  function copyCmd(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!'
+      setTimeout(() => btn.textContent = 'Copy', 1800)
+    })
+  }
+
+  // Scroll reveal
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1'
+        e.target.style.transform = 'translateY(0)'
+      }
+    })
+  }, { threshold: 0.07 })
+
+  document.querySelectorAll('.step, .prov-card, .code-block, .type-card').forEach(el => {
+    el.style.opacity = '0'
+    el.style.transform = 'translateY(12px)'
+    el.style.transition = 'opacity .4s ease, transform .4s ease'
+    io.observe(el)
+  })
+</script>
+</body>
+</html>
